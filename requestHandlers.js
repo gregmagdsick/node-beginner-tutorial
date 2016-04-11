@@ -1,3 +1,6 @@
+const fs = require('fs');
+const Formidable = require('formidable');
+
 function start(response) {
   process.stdout.write('Request handler "start" was called.\n');
 
@@ -7,9 +10,9 @@ var body = '<html>' +
   'charset=UTF-8" />' +
   '</head>' +
   '<body>' +
-  '<form action="/upload" method="post">' +
-  '<textarea name="text" rows="20" cols="60"></textarea>' +
-  '<input type="submit" value="Submit text" />' +
+  '<form action="/upload" enctype="multipart/form-data" method = "post">' +
+  '<input type="file" name="Upload">' +
+  '<input type="submit" value="Upload file">' +
   '</form>' +
   '</body>' +
   '</html>';
@@ -19,12 +22,32 @@ var body = '<html>' +
   response.end();
 }
 
-function upload(response) {
+function upload(response, request) {
   process.stdout.write('Request handler "upload" was called.\n');
-  response.writeHead(200, { 'content-type': 'text/plain' });
-  response.write('hello upload');
-  return 'Hello Upload';
+
+  var form = new Formidable.IncomingForm();
+  process.stdout.write('about to parse.\n');
+  form.parse(request, (error, fields, files) => {
+    process.stdout.write('parsing done.\n');
+    fs.rename(files.Upload.path, '/tmp/test.png', (err) => {
+      if (err) {
+        fs.unlink('/tmp/test.png');
+        fs.rename(files.Upload.path, '/tmp/test.png');
+      }
+    });
+  });
+  response.writeHead(200, { 'Content-Type': 'text/html' });
+  response.write('received image:<br/>');
+  response.write('<img src="/show" />');
+  response.end();
+}
+
+function show(response) {
+  process.stdout.write('Request handler "show" was called.\n');
+  response.writeHead(200, { 'Content-Type': 'image/png' });
+  fs.createReadStream('/tmp/test.png').pipe(response);
 }
 
 exports.start = start;
 exports.upload = upload;
+exports.show = show;
